@@ -126,7 +126,7 @@ label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
 .pb{border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:8px 2px 6px;cursor:pointer;text-align:center;line-height:1.25;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
 .pb b{font-family:var(--f-display);font-size:14px;letter-spacing:.06em;color:var(--c)}
 .pb span{font-size:11px;color:var(--muted)}
-.pb small{display:none}
+.pb small{display:block;font-size:9px;color:var(--dim);line-height:1.2;margin-top:2px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .pb.on{background:color-mix(in srgb,var(--c) 22%,var(--panel-2));border-color:var(--c)}
 .pb.on span{color:var(--fg)}
 .pb:disabled{cursor:default;opacity:.9}
@@ -134,7 +134,12 @@ label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
 .spark svg{width:100%;height:56px;display:block}
 .night{background:linear-gradient(180deg,#121220,var(--panel))}
 .radar{width:100%;max-width:200px;height:auto;display:block;margin:0 auto}
-@media (min-width:420px){.pb small{display:block;font-size:9.5px;color:var(--dim);line-height:1.2;margin-top:2px}}
+.pb.on small{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip.on{background:color-mix(in srgb,#f2c14e 22%,var(--panel-2));border-color:#f2c14e;color:var(--fg)}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(242,193,78,.0)}30%{box-shadow:0 0 0 3px rgba(242,193,78,.7)}100%{box-shadow:0 0 0 0 rgba(242,193,78,0)}}
+.flash{animation:flash 1.2s ease}
 /* 巻物 */
 .scroll{border-radius:20px;padding:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--vio) 12%,var(--panel)),var(--panel));border:1px solid var(--line)}
 .scroll .src{font-size:11px;letter-spacing:.14em;color:var(--vio)}
@@ -208,23 +213,24 @@ function pkey(k){ const a=String(k).split("-").map(Number); return new Date(a[0]
 function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
 function daysBetween(a,b){ return Math.round((pkey(dkey(b))-pkey(dkey(a)))/864e5); }
 const TODAY=()=>dkey(new Date());
-let D={v:2,start:"",identity:"30代でいちばんかっこよくなっていく",vision:["家族と全力で遊べる体力がある","患者さんの前で、いつも余裕がある","鏡を見て、悪くないと思える"],trigger:{when:"朝、体重を測ったら",what:"スクワットを10回する"},target:3,height:0,goalW:0,ex:null,log:{},w:{},rev:{},read:{},pil:{},good:{},sleep:{}};
+let D={v:2,start:"",identity:"30代でいちばんかっこよくなっていく",vision:["家族と全力で遊べる体力がある","患者さんの前で、いつも余裕がある","鏡を見て、悪くないと思える"],trigger:{when:"朝、体重を測ったら",what:"スクワットを10回する"},target:3,height:0,goalW:0,ex:null,log:{},w:{},rev:{},read:{},pil:{},good:{},sleep:{},groom:{},thanks:{}};
 try{ const r=localStorage.getItem(K); if(r) D=Object.assign(D,JSON.parse(r)); }catch(e){}
 if(!Array.isArray(D.ex)) D.ex=JSON.parse(JSON.stringify(EX_DEFAULT));
-["pil","good","sleep"].forEach(k=>{ if(!D[k]||typeof D[k]!=="object") D[k]={}; }); if(!Array.isArray(D.vision)) D.vision=[];
+["pil","good","sleep","groom","thanks"].forEach(k=>{ if(!D[k]||typeof D[k]!=="object") D[k]={}; }); if(!Array.isArray(D.vision)) D.vision=[];
 /* 5つの柱：筋トレ以外の小さな行動も「なりたい自分への一票」 */
 const PILLARS=[
-  {id:"body",  n:"BODY",  j:"からだ",  s:"トレーニング（自動）",            c:"#e8322e", auto:k=>trained(k)},
-  {id:"style", n:"STYLE", j:"見た目",  s:"身だしなみを1つ整えた（髪・肌・爪・服）", c:"#f2c14e"},
-  {id:"social",n:"SOCIAL",j:"人",      s:"自分から声をかけた・ありがとうを言った", c:"#ff6a3d"},
-  {id:"learn", n:"LEARN", j:"学び",    s:"5分でも学んだ（アカデミーは自動）",     c:"#4fc3f7", auto:k=>{ const sd=studyDays(); return !!(sd&&sd.has(k)); }},
-  {id:"mind",  n:"MIND",  j:"心",      s:"3行ポジティブ日記を書いた（自動）",    c:"#5ee6a0", auto:k=>!!(D.good[k]&&D.good[k].some(x=>x))}
+  {id:"body",  n:"BODY",  j:"からだ", h:"筋トレ", go:"trainCard", c:"#e8322e", auto:k=>trained(k)},
+  {id:"style", n:"STYLE", j:"見た目", h:"身だしなみ", go:"groomCard", c:"#f2c14e", auto:k=>!!(D.groom[k]&&D.groom[k].length)},
+  {id:"social",n:"SOCIAL",j:"人",     h:"ありがとう", go:"nightCard", c:"#ff6a3d", auto:k=>!!(D.thanks[k]&&D.thanks[k].trim())},
+  {id:"learn", n:"LEARN", j:"学び",   h:"学習", go:null,        c:"#4fc3f7", auto:k=>{ const sd=studyDays(); return !!(sd&&sd.has(k)); }},
+  {id:"mind",  n:"MIND",  j:"心",     h:"3行日記",   go:"nightCard", c:"#5ee6a0", auto:k=>!!(D.good[k]&&D.good[k].some(x=>x))}
 ];
 function pillarOn(id,k){ const p=PILLARS.find(x=>x.id===id); return !!((D.pil[k]&&D.pil[k][id]) || (p.auto&&p.auto(k))); }
 function pillarCount(k){ return PILLARS.filter(p=>pillarOn(p.id,k)).length; }
-function smallVotes(){ const ks=new Set([...Object.keys(D.pil),...Object.keys(D.good)]); let n=0; ks.forEach(k=>{ PILLARS.forEach(p=>{ if(p.id!=="body"&&p.id!=="learn"&&pillarOn(p.id,k)) n++; }); }); return n; }
+function smallVotes(){ const ks=new Set([...Object.keys(D.pil),...Object.keys(D.good),...Object.keys(D.groom),...Object.keys(D.thanks)]); let n=0; ks.forEach(k=>{ PILLARS.forEach(p=>{ if(p.id!=="body"&&p.id!=="learn"&&pillarOn(p.id,k)) n++; }); }); return n; }
 function sleepHours(k){ const s=D.sleep[k]; if(!s||!s.bed||!s.wake) return null; const [bh,bm]=s.bed.split(":").map(Number),[wh,wm]=s.wake.split(":").map(Number);
   let h=(wh+wm/60)-(bh+bm/60); if(h<=0) h+=24; return Math.round(h*10)/10; }
+const GROOM=[{id:"hair",n:"髪"},{id:"face",n:"髭・眉"},{id:"skin",n:"肌（洗顔・保湿）"},{id:"nail",n:"爪"},{id:"cloth",n:"服（サイズ・シワ）"},{id:"pose",n:"姿勢（胸を開く）"}];
 /* 30日チャレンジ：はじめた日から30日ごとに区切る */
 function challenge(){ const n=daysBetween(pkey(D.start),new Date()); const round=Math.floor(n/30)+1, day=n%30+1; const rs=addDays(pkey(D.start),(round-1)*30);
   let tr=0,rest=0; for(let i=0;i<30;i++){ const k=dkey(addDays(rs,i)); if(trained(k)) tr++; else if(rested(k)) rest++; }
@@ -307,7 +313,7 @@ function todayCard(){ const n=cardUnlocked(); for(let i=0;i<n;i++) if(!D.read[i]
 
 /* ================= 画面 ================= */
 const app=document.getElementById("app"); let tab="today";
-function hdr(){ document.getElementById("hdrVotes").textContent=votes(); }
+function hdr(){ document.getElementById("hdrVotes").textContent=votes()+smallVotes(); }
 function setTab(t){ tab=t; document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   ({today,body:bodyTab,look,scroll:scrollTab,set:setTabScreen})[t](); hdr(); window.scrollTo(0,0); }
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -346,12 +352,18 @@ function today(){
       ${!D.height?`<p class="small muted" style="margin:8px 0 0">設定で身長を入れると、BMIも出ます。</p>`:""}
       <button class="spark" id="sparkBtn" aria-label="体重の推移を見る">${sparkSVG()}</button>
     </div>
-    <div class="card">
-      <h3>今日の小さな一票</h3>
-      <p class="small muted" style="margin:0 0 6px">筋トレ以外も、なりたい自分への一票。できた柱をタップ。</p>
-      <div class="pillars">${PILLARS.map(p=>{ const on=pillarOn(p.id,k), manual=!(p.auto&&p.auto(k)); return `<button class="pb ${on?"on":""}" data-p="${p.id}" style="--c:${p.c}" ${p.id==="body"||(p.auto&&p.auto(k)&&p.id!=="learn")?"disabled":""}><b>${p.n}</b><span>${p.j}</span><small>${esc(p.s)}</small></button>`; }).join("")}</div>
+    <div class="card" id="groomCard">
+      <div class="row" style="justify-content:space-between"><h3>けさの身だしなみ</h3><span class="small" style="color:#f2c14e">${(D.groom[k]||[]).length?"STYLE 点灯中":""}</span></div>
+      <p class="small muted" style="margin:0 0 8px">体重を測ったら、鏡の前で。整えたものをタップ（1つでSTYLEに一票）。</p>
+      <div class="chips">${GROOM.map(g=>`<button class="chip ${(D.groom[k]||[]).includes(g.id)?"on":""}" data-g="${g.id}">${g.n}</button>`).join("")}</div>
     </div>
     <div class="card">
+      <h3>今日の小さな一票</h3>
+      <p class="small muted" style="margin:0 0 6px">筋トレ以外も、なりたい自分への一票。下に書いた行動をすると自動で点きます（タップで記録する場所へ）。</p>
+      <div class="pillars">${PILLARS.map(p=>{ const on=pillarOn(p.id,k); return `<button class="pb ${on?"on":""}" data-p="${p.id}" style="--c:${p.c}"><b>${p.n}</b><span>${p.j}</span><small>${esc(p.h)}</small></button>`; }).join("")}</div>
+      <p class="small muted" style="margin:8px 0 0">LEARNは、アカデミー以外（本・論文など）で学んだ日はタップで点けられます。</p>
+    </div>
+    <div class="card" id="trainCard">
       <h3>${done? "もう一回やる？（記録を上書き）":"今日のトレーニング"}</h3>
       <p class="small muted" style="margin:0 0 10px">今日の自分に合う量を選ぶ。どれを選んでも一票です。</p>
       <div class="levels">${[1,2,3].map(l=>`<button class="lvb ${l===1?"mini":""}" data-lv="${l}"><b>${LV[l].n}</b><span>${LV[l].s}</span></button>`).join("")}</div>
@@ -363,11 +375,13 @@ function today(){
       <p class="small muted" style="margin:0">${esc(card.b[0])}</p>
       <div style="margin-top:10px"><button class="ghost" id="readCard">続きを読む →</button></div>
     </div>
-    <div class="card night">
+    <div class="card night" id="nightCard">
       <div class="eyebrow">NIGHT</div>
-      <h3>3行ポジティブ日記</h3>
+      <h3>3行ポジティブ日記 <span class="small" style="color:#5ee6a0;font-weight:500">→ MIND</span></h3>
       <p class="small muted" style="margin:0 0 4px">寝る前に、今日あった良いことを3つ。小さくていい。</p>
       ${[0,1,2].map(i=>`<input class="txt gd" data-i="${i}" placeholder="${["例：朝、体重を測れた","例：患者さんに笑ってもらえた","例：ミニでも動けた"][i]}" value="${esc(gd[i]||"")}" style="margin-top:6px">`).join("")}
+      <label class="f">今日のありがとう・声かけ（誰に／何を）<span style="color:#ff6a3d"> → SOCIAL</span></label>
+      <input class="txt" id="thx" placeholder="例：看護師さんに夜勤のお礼を言った" value="${esc(D.thanks[k]||"")}">
       <div class="row" style="margin-top:10px;gap:10px">
         <div style="flex:1"><label class="f" style="margin-top:0">寝る時間</label><input class="txt" id="slBed" type="time" value="${esc(sl.bed||"")}"></div>
         <div style="flex:1"><label class="f" style="margin-top:0">起きた時間（翌朝）</label><input class="txt" id="slWake" type="time" value="${esc(sl.wake||"")}"></div>
@@ -378,11 +392,19 @@ function today(){
   </section>`;
   document.getElementById("wSave").onclick=()=>{ const v=parseFloat(document.getElementById("wIn").value); if(!(v>20&&v<300)){ toast("体重を入れてください"); return; } D.w[k]=Math.round(v*10)/10; save(); toast("体重を記録しました"); today(); };
   document.getElementById("sparkBtn").onclick=()=>setTab("body");
-  app.querySelectorAll(".pb").forEach(b=>b.onclick=()=>{ const id=b.dataset.p; D.pil[k]=D.pil[k]||{}; D.pil[k][id]=!D.pil[k][id]; save(); if(D.pil[k][id]) toast(PILLARS.find(p=>p.id===id).n+" に一票"); today(); });
+  app.querySelectorAll(".pb").forEach(b=>b.onclick=()=>{ const p=PILLARS.find(x=>x.id===b.dataset.p);
+    if(p.go){ const el=document.getElementById(p.go); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); } return; }
+    if(p.auto(k)){ toast("アカデミーで学習済み。LEARN 点灯中"); return; }
+    D.pil[k]=D.pil[k]||{}; D.pil[k][p.id]=!D.pil[k][p.id]; save(); if(D.pil[k][p.id]) toast("LEARN に一票"); today(); });
+  app.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ const g=b.dataset.g, arr=D.groom[k]||[]; const had=arr.length;
+    D.groom[k]= arr.includes(g)? arr.filter(x=>x!==g) : [...arr,g]; if(!D.groom[k].length) delete D.groom[k]; save();
+    if(!had && D.groom[k]) toast("STYLE に一票"); const y=window.scrollY; today(); window.scrollTo(0,y); });
   document.getElementById("nightSave").onclick=()=>{ const g=[...app.querySelectorAll(".gd")].map(i=>i.value.trim()); D.good[k]=g;
+    const tx=document.getElementById("thx").value.trim(); if(tx) D.thanks[k]=tx; else delete D.thanks[k];
     const bed=document.getElementById("slBed").value, wake=document.getElementById("slWake").value; if(bed||wake) D.sleep[k]={bed,wake}; save();
     toast(g.some(x=>x)?"今日を良い記憶で締めました。おやすみなさい":"記録しました"); today(); };
   app.querySelectorAll(".lvb").forEach(b=>b.onclick=()=>session(+b.dataset.lv));
+  hdr();
   const rb=document.getElementById("restBtn"); if(rb) rb.onclick=()=>checkin(null);
   document.getElementById("readCard").onclick=()=>{ setTab("scroll"); openCard(todayCard()); };
 }
