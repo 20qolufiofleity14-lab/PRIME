@@ -246,7 +246,9 @@ const TODAY=()=>dkey(new Date());
 let D={v:2,start:"",identity:"30代でいちばんかっこよくなっていく",vision:["家族と全力で遊べる体力がある","患者さんの前で、いつも余裕がある","鏡を見て、悪くないと思える"],trigger:{when:"朝、体重を測ったら",what:"スクワットを10回する"},target:3,height:0,goalW:0,ex:null,log:{},w:{},rev:{},read:{},pil:{},good:{},sleep:{},groom:{},thanks:{}};
 try{ const r=localStorage.getItem(K); if(r) D=Object.assign(D,JSON.parse(r)); }catch(e){}
 if(!Array.isArray(D.ex)) D.ex=JSON.parse(JSON.stringify(EX_DEFAULT));
-["pil","good","sleep","groom","thanks"].forEach(k=>{ if(!D[k]||typeof D[k]!=="object") D[k]={}; }); if(!Array.isArray(D.vision)) D.vision=[];
+["pil","good","sleep","groom","thanks"].forEach(k=>{ if(!D[k]||typeof D[k]!=="object") D[k]={}; });
+/* 睡眠は「その日の朝に終わった睡眠」で記録する形に変更。旧形式（その夜→翌朝）を1日後ろへずらす */
+if(!D.sleepV){ const ns={}; for(const k in D.sleep){ const a=k.split("-").map(Number); const d=new Date(a[0],a[1]-1,a[2]+1); ns[d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()]=D.sleep[k]; } D.sleep=ns; D.sleepV=2; } if(!Array.isArray(D.vision)) D.vision=[];
 /* 5つの柱：筋トレ以外の小さな行動も「なりたい自分への一票」 */
 const PILLARS=[
   {id:"body",  n:"BODY",  j:"からだ", h:"筋トレ", go:"trainCard", c:"#e8322e", auto:k=>trained(k)},
@@ -413,10 +415,10 @@ function today(){
       <label class="f">今日のありがとう・声かけ（誰に／何を）<span style="color:#ff6a3d"> → SOCIAL</span></label>
       <input class="txt" id="thx" placeholder="例：看護師さんに夜勤のお礼を言った" value="${esc(D.thanks[k]||"")}">
       <div class="row" style="margin-top:10px;gap:10px">
-        <div style="flex:1"><label class="f" style="margin-top:0">寝る時間</label><input class="txt" id="slBed" type="time" value="${esc(sl.bed||"")}"></div>
-        <div style="flex:1"><label class="f" style="margin-top:0">起きた時間（翌朝）</label><input class="txt" id="slWake" type="time" value="${esc(sl.wake||"")}"></div>
+        <div style="flex:1"><label class="f" style="margin-top:0">昨夜寝た時間</label><input class="txt" id="slBed" type="time" value="${esc(sl.bed||"")}"></div>
+        <div style="flex:1"><label class="f" style="margin-top:0">けさ起きた時間</label><input class="txt" id="slWake" type="time" value="${esc(sl.wake||"")}"></div>
       </div>
-      ${sleepHours(k)!=null?`<p class="small muted" style="margin:6px 0 0">睡眠 ${sleepHours(k)} 時間${sleepHours(k)>=7?" ・ 7時間クリア":" ・ 目安は7時間"}</p>`:""}
+      ${sleepHours(k)!=null?`<p class="small muted" style="margin:6px 0 0">昨夜の睡眠 ${sleepHours(k)} 時間${sleepHours(k)>=7?" ・ 7時間クリア":" ・ 目安は7時間"}</p>`:""}
       <div style="text-align:right;margin-top:10px"><button class="cta" id="nightSave">今日を締める</button></div>
     </div>
   </section>`;
@@ -652,14 +654,14 @@ function look(){
   document.getElementById("cNext").onclick=()=>{ if(calOff<0){ calOff++; look(); } };
   document.getElementById("rSave").onclick=()=>{ D.rev[wk]={a:val("r1"),b:val("r2"),c:val("r3")}; save(); toast("ふりかえりを保存しました"); };
 }
-function sleepCard(days){ /* 睡眠時間と、翌日のコンディション */
-  const rows=days.map(k=>{ const prev=dkey(addDays(pkey(k),-1)); const h=sleepHours(prev); const c=D.log[k]&&D.log[k].cond; return (h!=null&&c&&c.focus)? {h,focus:c.focus,mood:c.mood||0}:null; }).filter(Boolean);
+function sleepCard(days){ /* 睡眠時間と、その日のコンディション */
+  const rows=days.map(k=>{ const h=sleepHours(k); const c=D.log[k]&&D.log[k].cond; return (h!=null&&c&&c.focus)? {h,focus:c.focus,mood:c.mood||0}:null; }).filter(Boolean);
   const wk=[]; for(let i=0;i<7;i++){ const h=sleepHours(dkey(addDays(new Date(),-i))); if(h!=null) wk.push(h); }
   const avg=wk.length? (wk.reduce((a,b)=>a+b,0)/wk.length).toFixed(1):null;
   const ok=rows.filter(r=>r.h>=7), ng=rows.filter(r=>r.h<7); const m=(a,f)=>a.length? (a.reduce((s,r)=>s+r[f],0)/a.length).toFixed(1):"—";
   return `<div class="card"><h3>睡眠</h3>
     <div class="grid2" style="margin-top:6px"><div class="tile"><div class="k">この7日の平均</div><div class="v">${avg||"—"}<small> 時間</small></div></div><div class="tile"><div class="k">7時間以上の夜</div><div class="v">${wk.filter(h=>h>=7).length}<small> / ${wk.length}</small></div></div></div>
-    ${ok.length>=3&&ng.length>=3? `<p class="small muted" style="margin:10px 0 4px">前の晩に7時間寝た日と、そうでない日の翌日のチェックイン</p>
+    ${ok.length>=3&&ng.length>=3? `<p class="small muted" style="margin:10px 0 4px">前の晩に7時間寝た日と、そうでない日のチェックイン</p>
       <div class="bar2"><span>7時間以上</span><div class="tr"><i style="width:${m(ok,"focus")/5*100}%;background:#4fc3f7"></i></div><b>頭 ${m(ok,"focus")}</b></div>
       <div class="bar2"><span>7時間未満</span><div class="tr"><i style="width:${m(ng,"focus")/5*100}%;background:#66645f"></i></div><b>頭 ${m(ng,"focus")}</b></div>
       <div class="bar2" style="margin-top:6px"><span>7時間以上</span><div class="tr"><i style="width:${m(ok,"mood")/5*100}%;background:#f2c14e"></i></div><b>心 ${m(ok,"mood")}</b></div>
